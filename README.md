@@ -23,3 +23,5 @@ bjork --help
 note: always run bjork-listen or else bjork will explain a previously captured error!
 
 idea: "bjork --explain" to automatically clear the content from .last_error in order to better disambiguity of errors (in cases when users forget to run bjork-listen)
+
+other idea: "bjork-listen --append" to append on to .last_error (in some sort of well formatted/easy to send to LLM way)
