@@ -22,6 +22,10 @@ bjork --help
 
 note: always run bjork-listen or else bjork will explain a previously captured error!
 
-idea: "bjork --explain" to automatically clear the content from .last_error in order to better disambiguity of errors (in cases when users forget to run bjork-listen)
+ideas:
 
-other idea: "bjork-listen --append" to append on to .last_error (in some sort of well formatted/easy to send to LLM way)
+1) "bjork --explain" to automatically clear the content from .last_error in order to better disambiguity of errors (in cases when users forget to run bjork-listen)
+
+2) "bjork-listen --append" to append on to .last_error (in some sort of well formatted/easy to send to LLM way)
+
+3) set "explanation complexity" from 1-10 in bjork-install.sh and save in file locally on target machine. use experince level to cater the level of technicality in explanations. adjust this level later with "bjork --set-explanation-complexity <1-10>"
