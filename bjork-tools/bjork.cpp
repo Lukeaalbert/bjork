@@ -24,8 +24,6 @@ void usage() {
 void executeRequest(std::string_view command, std::ifstream& file) {
     if (command == "show") {
         // print error
-        std::string line{};
-        std::stringstream buff;
         std::cout << file.rdbuf();
         std::cout.flush();
     }
