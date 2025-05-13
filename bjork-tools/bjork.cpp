@@ -7,18 +7,20 @@
 
 void usage() {
     const static std::string usage = 
-        "Usage:\n"
+        "\nusage:\n"
         "\tbjork-listen (capture new error message)\n"
         "\n"
         "\tbjork --explain (explain captured error message)\n"
-        "\ttbjork --show (show currently captured error message)\n"
+        "\tbjork --show (show currently captured error message)\n"
         "\tbjork --explanation-complexity [1-10] (set complexity of explanations)\n"
         "\tbjork --help\n\n"
-        "Sample Usage:"
+        "sample usage:\n"
         "\tbjork-listen g++ badcode.cpp\n"
         "\tbjork --explain\n\n"
         "\tbjork-listen python3 badcode.py\n"
-        "\tbjork --explain\n";
+        "\tbjork --explain\n\n";
+    std::cout << usage;
+    std::cout.flush();
 }
 
 void executeRequest(std::string_view command, std::ifstream& file) {
