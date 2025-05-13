@@ -2,7 +2,7 @@
 set -e
 
 # config
-REPO_BASE="https://raw.githubusercontent.com/lukeaalbert/bjork/bjork-tools"
+REPO_BASE="https://raw.githubusercontent.com/Lukeaalbert/bjork/main/bjork-tools"
 INSTALL_DIR="$HOME/.local/bin"
 BJORK_LISTEN_URL="$REPO_BASE/bjork-listen"
 BJORK_CPP_URL="$REPO_BASE/bjork.cpp"
