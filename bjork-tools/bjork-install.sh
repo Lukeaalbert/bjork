@@ -6,6 +6,7 @@ REPO_BASE="https://raw.githubusercontent.com/lukeaalbert/bjork/bjork-tools"
 INSTALL_DIR="$HOME/.local/bin"
 BJORK_LISTEN_URL="$REPO_BASE/bjork-listen"
 BJORK_CPP_URL="$REPO_BASE/bjork.cpp"
+CMAKE_LISTS_URL="$REPO_BASE/CMakeLists.txt"
 
 # setup
 mkdir -p "$INSTALL_DIR"
@@ -16,9 +17,18 @@ curl -fsSL "$BJORK_LISTEN_URL" -o "$TMP_DIR/bjork-listen"
 chmod +x "$TMP_DIR/bjork-listen"
 mv "$TMP_DIR/bjork-listen" "$INSTALL_DIR/"
 
-echo "Downloading and compiling bjork tools..."
+echo "Downloading bjork.cpp source and CMakeLists.txt..."
 curl -fsSL "$BJORK_CPP_URL" -o "$TMP_DIR/bjork.cpp"
-g++ -std=c++17 "$TMP_DIR/bjork.cpp" -o "$INSTALL_DIR/bjork"
+curl -fsSL "$CMAKE_LISTS_URL" -o "$TMP_DIR/CMakeLists.txt"
+
+echo "Setting up CMake build (with libcurl)..."
+mkdir "$TMP_DIR/build"
+cd "$TMP_DIR/build"
+cmake ..
+cmake --build .
+
+echo "Installing bjork binary..."
+mv bjork "$INSTALL_DIR/"
 
 # add to PATH if needed
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
@@ -31,11 +41,11 @@ if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
 
   echo "Adding $INSTALL_DIR to your PATH..."
   if [[ -n "$SHELL_CONFIG" ]]; then
-    echo 'Export PATH="$HOME/.local/bin:$PATH"' >> "$SHELL_CONFIG"
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$SHELL_CONFIG"
     echo "Added to $SHELL_CONFIG. Run: source $SHELL_CONFIG"
   else
     echo "Couldn't auto-detect shell config. Add this manually:"
-    echo 'Export PATH="$HOME/.local/bin:$PATH"'
+    echo 'export PATH="$HOME/.local/bin:$PATH"'
   fi
 fi
 
