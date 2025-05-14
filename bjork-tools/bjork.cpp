@@ -181,7 +181,7 @@ int main(int argc, char *argv[]) {
         }
 
         // open last_error log
-        std::ifstream file(std::string(path) + "/.bjork/.last_error");
+        std::ifstream file(std::string(path) + "/.bjork/last_error");
         // invalid (last_error log is empty)
         if (!file) {
             std::cerr << "No error captured. Capture error message with 'bjork-listen' first.\n";
