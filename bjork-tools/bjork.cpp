@@ -28,6 +28,29 @@ namespace utils {
             {}
     };
 
+    std::string EscapeJson(std::string_view input) {
+        std::ostringstream oss;
+        for (char c : input) {
+            switch (c) {
+                case '\"': oss << "\\\""; break;
+                case '\\': oss << "\\\\"; break;
+                case '\b': oss << "\\b"; break;
+                case '\f': oss << "\\f"; break;
+                case '\n': oss << "\\n"; break;
+                case '\r': oss << "\\r"; break;
+                case '\t': oss << "\\t"; break;
+                default:
+                    if ('\x00' <= c && c <= '\x1f') {
+                        oss << "\\u"
+                            << std::hex << std::setw(4) << std::setfill('0') << (int)c;
+                    } else {
+                        oss << c;
+                    }
+            }
+        }
+        return oss.str();
+    }
+
     size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* output) {
         size_t totalSize = size * nmemb;
         output->append((char*)contents, totalSize);
@@ -94,7 +117,7 @@ void ExecuteRequest(std::string_view command, std::ifstream& file) {
         // read file to string
         std::stringstream buff;
         buff << file.rdbuf();
-        const std::string kLoggedError = buff.str();
+        const std::string kLoggedError =  utils::EscapeJson(buff.str());
 
         // make api call
         // TODO: big todo here! this is temporary. once we release,
