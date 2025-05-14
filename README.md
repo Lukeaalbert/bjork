@@ -1,22 +1,23 @@
 # Bjork
 #### Bjork is a lightweight command line tool built to help users understand compilation and runtime errors across languages. It's specifically built for beginner programmers who, like we did, feel overwhelemed and confused by error messages.
 
- note: to test (for the time being, before we release) set gemini api key with:
-```bash
-export GEMINI_API_KEY="key"
-```
-
 ### Contributers
 * lukeaalbert@gmail.com
 * berman.tanner@gmail.com
 
 ### Setup
 
+ note: for the time being, while testing, set gemini api key with:
+```bash
+export GEMINI_API_KEY="key"
+```
+we have to decide on our design with api key stuff later (if user should input or if we provide)
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Lukeaalbert/bjork/main/bjork-tools/bjork-install.sh | bash
 ```
 
-To Use
+### To Use
 ```bash
 bjork-listen g++ badcode.cpp
 bjork --explain
