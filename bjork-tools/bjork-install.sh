@@ -53,7 +53,7 @@ fi
 
 # done
 echo "Installation complete!"
-echo "You can now run:"
+echo "Please restart your session and then you'll be able to run:"
 echo "   bjork-listen g++ badcode.cpp"
 echo "   bjork --explain"
 

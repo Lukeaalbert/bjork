@@ -1,2 +1,3 @@
 #!/bin/bash
-"$@" 2> "$HOME/.last_error"
+mkdir -p "$HOME/.bjork"
+"$@" 2> "$HOME/.bjork/last_error"
