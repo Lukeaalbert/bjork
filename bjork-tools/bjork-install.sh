@@ -42,7 +42,9 @@ if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
   echo "Adding $INSTALL_DIR to your PATH..."
   if [[ -n "$SHELL_CONFIG" ]]; then
     echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$SHELL_CONFIG"
-    echo "Added to $SHELL_CONFIG. Run: source $SHELL_CONFIG"
+    echo "Added to $SHELL_CONFIG."
+    echo "Sourcing $SHELL_CONFIG..."
+    source "$SHELL_CONFIG"
   else
     echo "Couldn't auto-detect shell config. Add this manually:"
     echo 'export PATH="$HOME/.local/bin:$PATH"'
