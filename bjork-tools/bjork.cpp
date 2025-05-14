@@ -37,7 +37,7 @@ namespace utils {
 
 void Usage() {
     const static std::string usage = 
-        "\nusage:\n"
+        "usage:\n"
         "\tbjork-listen (capture new error message)\n"
         "\n"
         "\tbjork --explain (explain captured error message)\n"

@@ -8,29 +8,33 @@ BJORK_LISTEN_URL="$REPO_BASE/bjork-listen"
 BJORK_CPP_URL="$REPO_BASE/bjork.cpp"
 CMAKE_LISTS_URL="$REPO_BASE/CMakeLists.txt"
 
-# setup
+# setup install directories
 mkdir -p "$INSTALL_DIR"
 TMP_DIR=$(mktemp -d)
+BUILD_DIR="$TMP_DIR/build"
 
-echo "Downloading 'bjork-listen' script..."
+echo "Downloading files to temp directory..."
 curl -fsSL "$BJORK_LISTEN_URL" -o "$TMP_DIR/bjork-listen"
-chmod +x "$TMP_DIR/bjork-listen"
-mv "$TMP_DIR/bjork-listen" "$INSTALL_DIR/"
-
-echo "Downloading bjork.cpp source and CMakeLists.txt..."
 curl -fsSL "$BJORK_CPP_URL" -o "$TMP_DIR/bjork.cpp"
 curl -fsSL "$CMAKE_LISTS_URL" -o "$TMP_DIR/CMakeLists.txt"
 
-echo "Setting up CMake build (with libcurl)..."
-mkdir "$TMP_DIR/build"
-cd "$TMP_DIR/build"
+# make bjork-listen executable and install
+chmod +x "$TMP_DIR/bjork-listen"
+mv "$TMP_DIR/bjork-listen" "$INSTALL_DIR/"
+echo "Installed bjork-listen to $INSTALL_DIR"
+
+# build bjork binary
+echo "⚙️  Building bjork binary..."
+mkdir "$BUILD_DIR"
+cd "$BUILD_DIR"
 cmake ..
 cmake --build .
 
-echo "Installing bjork binary..."
+# move bjork binary
 mv bjork "$INSTALL_DIR/"
+echo "Installed bjork to $INSTALL_DIR"
 
-# add to PATH if needed
+# add INSTALL_DIR to PATH if not already
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
   SHELL_CONFIG=""
   if [[ $SHELL == */bash ]]; then
@@ -39,23 +43,28 @@ if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
     SHELL_CONFIG="$HOME/.zshrc"
   fi
 
-  echo "Adding $INSTALL_DIR to your PATH..."
+  echo "Adding $INSTALL_DIR to PATH..."
   if [[ -n "$SHELL_CONFIG" ]]; then
     echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$SHELL_CONFIG"
-    echo "Added to $SHELL_CONFIG."
-    echo "Sourcing $SHELL_CONFIG..."
-    source "$SHELL_CONFIG"
+    echo "Added to $SHELL_CONFIG"
+    echo "Run: source $SHELL_CONFIG"
   else
-    echo "Couldn't auto-detect shell config. Add this manually:"
+    echo "Could not detect your shell config. Add this manually to your shell profile:"
     echo 'export PATH="$HOME/.local/bin:$PATH"'
   fi
 fi
 
-# done
-echo "Installation complete!"
-echo "Please restart your session and then you'll be able to run:"
-echo "   bjork-listen g++ badcode.cpp"
-echo "   bjork --explain"
+# final checks
+echo "Verifying install..."
+if command -v bjork &>/dev/null && command -v bjork-listen &>/dev/null; then
+  echo "Install complete! You can now run:"
+  echo "   bjork-listen g++ badcode.cpp"
+  echo "   bjork --explain"
+else
+  echo "bjork or bjork-listen not found in PATH."
+  echo "Try running 'source ~/.bashrc' or 'source ~/.zshrc', or manually add:"
+  echo '   export PATH="$HOME/.local/bin:$PATH"'
+fi
 
-# cleanup
+# Cleanup
 rm -rf "$TMP_DIR"

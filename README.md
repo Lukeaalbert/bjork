@@ -37,6 +37,7 @@ note: always run bjork-listen or else bjork will explain a previously captured e
 ### TODO
 (mark with "ip" for in progress or "x" for complete and email. ie,
 "[ip, lukeaalbert@gmail.com] Do thing")
+* [ ] Parse just the text (ai response) to print from JSON API response.
 * [ ] Add "explanation complexity" prompt in bjork-install.sh and store set complexity on a file locally to use
 * [ ] Add "bjork --explanation-complexity [1-10]" functionality to bjork.cpp. should override current set explanation complexity.
 * [ ] Refactor bjork-install.sh and make it more professional and simple. ie, do we really need ALL of Libcurl? Super ideally, should be able to install and setup with "sudo apt install bjork".
