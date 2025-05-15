@@ -1,4 +1,3 @@
-#include <iostream>
 #include <fstream>
 #include <string>
 #include <sstream>
@@ -7,6 +6,7 @@
 #include <optional>
 #include <string_view>
 
+#include "spinner.h"
 #include <curl/curl.h>
 
 namespace utils {
@@ -153,7 +153,7 @@ void Usage() {
 }
 
 // populates api_info's api_response
-void MakeApiCall(utils::ApiInfo* api_info) {
+int MakeApiCall(utils::ApiInfo* api_info) {
     curl_global_init(CURL_GLOBAL_DEFAULT);
     auto curl = curl_easy_init();
     if (curl) {
@@ -175,11 +175,12 @@ void MakeApiCall(utils::ApiInfo* api_info) {
 
         if (response != CURLE_OK) {
             std::cerr << "Failed to query API for explanation!\n";
-            exit(-1);
+            return 0;
         }
 
         curl_slist_free_all(headers);
         curl_easy_cleanup(curl);
+        return 1;
     }
 }
 
@@ -190,10 +191,14 @@ void ExecuteRequest(std::string_view command, std::ifstream& file) {
         std::cout.flush();
     }
     else if (command == "explain") {
+        // this displays loading animation
+        loading_done = false;
+        std::thread spinner(LoadingSpinner);
+
         // read file to string
         std::stringstream buff;
         buff << file.rdbuf();
-        const std::string kLoggedError =  utils::EscapeJson(buff.str());
+        const std::string kLoggedError =  buff.str();
 
         // make api call
         // TODO: big todo here! this is temporary. once we release,
@@ -202,6 +207,8 @@ void ExecuteRequest(std::string_view command, std::ifstream& file) {
         const char* kGeminiApiKey = std::getenv("GEMINI_API_KEY");
         if (kGeminiApiKey == nullptr) {
             std::cerr << "Error: GEMINI_API_KEY environment variable not set." << std::endl;
+            loading_done = true;
+            spinner.join(); // always
             exit(-1);
         }
 
@@ -209,12 +216,29 @@ void ExecuteRequest(std::string_view command, std::ifstream& file) {
         url_stream << "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" << kGeminiApiKey;
         const std::string kApiUri = url_stream.str();
 
-        // TODO: big todo here. make this prompt way better.
-        const char* kSystemPrompt = 
-        "You are a programmer. Your job is to explain the provided error to your student."
-        "You will explain where the error is in their code, how to generally go about fixing it,"
-        "and why it occured. Format your response with newlines and tabs (backslash n or t), as it"
-        " will be directly displayed via std::cout.";
+        // TODO: improve as much as possible
+        const char* kSystemPrompt = R"(
+        You are a programming tutor assistant. You will be shown an error message.
+
+        Your job is to generate a **brief, clear, and helpful explanation** of the error.
+        Your response MUST contain **exactly three labeled sections**, using this format (DO NOT DEVIATE):
+
+        The Error: <Short summary of what the error is>
+
+        Likely Location: <Where in the user's code the problem likely is (e.g. line number, header, or code context)>
+
+        How to Fix: <How the user can fix or approach fixing the error>
+
+        Why It Happened: <One-sentence explanation of why this error occurs in general>
+
+        RESPONSE REQUIREMENTS:
+        - Use *exactly* the labels: "The Error:", "Likely Location:", "How to Fix:", and "Why It Happened:"
+        - NO markdown, NO code fences, NO bullet points
+        - Output must be directly suitable for printing via std::cout
+        - Format with `\n` for newlines and `\t` for indentation — do not describe them, just insert them directly
+        - There must be *exactly* two newlines `\n` directly inserted after the end of each section ("The Error", "Likely Location", "How to Fix", and "Why It Happened")
+        - Output should not include introductory phrases, summaries, or extra context — just the 4 labeled sections
+        )";
 
         std::ostringstream json_body_stream;
         json_body_stream << R"({
@@ -222,14 +246,14 @@ void ExecuteRequest(std::string_view command, std::ifstream& file) {
                 {
                     "role": "user",
                     "parts": [
-                        { "text": ")" << kLoggedError << R"(" }
+                        { "text": ")" << utils::EscapeJson(kLoggedError) << R"(" }
                     ]
                 }
             ],
             "system_instruction": {
                 "role": "system",
                 "parts": [
-                    { "text": ")" << kSystemPrompt << R"(" }
+                    { "text": ")" << utils::EscapeJson(kSystemPrompt) << R"(" }
                 ]
             }
         })";
@@ -239,7 +263,14 @@ void ExecuteRequest(std::string_view command, std::ifstream& file) {
         utils::ApiInfo api_info(kApiUri, kLoggedError, kSystemPrompt, kJsonBody);
 
         // make api call
-        MakeApiCall(&api_info);
+        int res_status = MakeApiCall(&api_info);
+
+        // api call done!
+        loading_done = true;
+        spinner.join();
+
+        if (!res_status)
+            exit(-1);
 
         // parse code and message; print
         auto explanation = utils::GetJsonStringValue(api_info.api_response, "text");
@@ -248,7 +279,9 @@ void ExecuteRequest(std::string_view command, std::ifstream& file) {
             std::cerr << "Full API response:\n" << api_info.api_response << '\n';
             exit(-1);
         } else {
-            std::cout << utils::UnescapeJson(*explanation) << '\n';
+            /* we gotta unscape this twice because the ai returns some double newlines
+            for better display. and you need two passes through unescape to account for this */ 
+            std::cout << utils::UnescapeJson(utils::UnescapeJson(*explanation)) << '\n';
         }
     }
 }
