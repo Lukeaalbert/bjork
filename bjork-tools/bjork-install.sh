@@ -4,9 +4,6 @@ set -e
 # config
 REPO_BASE="https://raw.githubusercontent.com/Lukeaalbert/bjork/main/bjork-tools"
 INSTALL_DIR="$HOME/.local/bin"
-BJORK_LISTEN_URL="$REPO_BASE/bjork-listen"
-BJORK_CPP_URL="$REPO_BASE/bjork.cpp"
-CMAKE_LISTS_URL="$REPO_BASE/CMakeLists.txt"
 
 echo "Installing Bjork CLI to: $INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
@@ -14,10 +11,11 @@ TMP_DIR=$(mktemp -d)
 
 # download files
 echo "Downloading source files..."
-curl -fsSL "$BJORK_CPP_URL" -o "$TMP_DIR/bjork.cpp"
-curl -fsSL "$BJORK_LISTEN_URL" -o "$TMP_DIR/spinner.cpp"
-curl -fsSL "$CMAKE_LISTS_URL" -o "$TMP_DIR/CMakeLists.txt"
-curl -fsSL "$BJORK_LISTEN_URL" -o "$TMP_DIR/bjork-listen"
+curl -fsSL "$REPO_BASE/bjork.cpp" -o "$TMP_DIR/bjork.cpp"
+curl -fsSL "$REPO_BASE/spinner.cpp" -o "$TMP_DIR/spinner.cpp"
+curl -fsSL "$REPO_BASE/spinner.h" -o "$TMP_DIR/spinner.h"
+curl -fsSL "$REPO_BASE/CMakeLists.txt" -o "$TMP_DIR/CMakeLists.txt"
+curl -fsSL "$REPO_BASE/bjork-listen" -o "$TMP_DIR/bjork-listen"
 
 # setup bjork-listen
 chmod +x "$TMP_DIR/bjork-listen"
