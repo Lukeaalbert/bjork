@@ -208,19 +208,13 @@ void ExecuteRequest(std::string_view command, std::ifstream& file) {
         MakeApiCall(&api_info);
 
         // parse code and message; print
-        auto response_code = utils::GetJsonStringValue(api_info.api_response, "code");
-        auto response_message = utils::GetJsonStringValue(api_info.api_response, "message");
-        if (!response_code) {
-            std::cerr << "Could not find status code in API response.\n";
+        auto explanation = utils::GetJsonStringValue(api_info.api_response, "text");
+        if (!explanation) {
+            std::cerr << "Error: No explanation text found in response.\n";
+            std::cerr << "Full API response:\n" << api_info.api_response << '\n';
             exit(-1);
-        } else if (!response_message) {
-            std::cerr << "Could not find generated message in API response.\n";
-            exit(-1);
-        } else if (std::stoi(*response_code) != 200) {
-            std::cerr << "API response code " << *response_code << ": " << *response_message << ".\n";
-            exit(-1);
-        } else { // valid
-            std::cout << *response_message << '\n';
+        } else {
+            std::cout << *explanation << '\n';
         }
     }
 }

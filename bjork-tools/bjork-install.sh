@@ -13,7 +13,7 @@ mkdir -p "$INSTALL_DIR"
 TMP_DIR=$(mktemp -d)
 
 # download files
-echo "downloading bjork.cpp, CMakeLists.txt, and bjork-listen..."
+echo "Downloading bjork.cpp, CMakeLists.txt, and bjork-listen..."
 curl -fsSL "$BJORK_CPP_URL" -o "$TMP_DIR/bjork.cpp"
 curl -fsSL "$CMAKE_LISTS_URL" -o "$TMP_DIR/CMakeLists.txt"
 curl -fsSL "$BJORK_LISTEN_URL" -o "$TMP_DIR/bjork-listen"
