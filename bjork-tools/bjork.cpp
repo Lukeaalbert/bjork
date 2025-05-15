@@ -4,6 +4,7 @@
 #include <sstream>
 #include <cstdlib>
 #include <format>
+#include <optional>
 #include <string_view>
 
 #include <curl/curl.h>
@@ -50,6 +51,47 @@ namespace utils {
         }
         return oss.str();
     }
+
+    std::optional<std::string> GetJsonStringValue(std::string_view json, std::string_view key) {
+        std::string indentifier = "\"" + std::string(key) + "\"";
+
+        size_t key_pos = json.find(indentifier);
+        if (key_pos == std::string::npos)
+            return std::nullopt;
+
+        // find colon
+        size_t colon_pos = json.find(':', key_pos + indentifier.size());
+        if (colon_pos == std::string::npos)
+            return std::nullopt;
+
+        // skip any whitespace
+        size_t quote_start = json.find('"', colon_pos);
+        if (quote_start == std::string::npos)
+            return std::nullopt;
+
+        // find the closing quote while handling escaped quotes
+        size_t i = quote_start + 1;
+        std::string value;
+        while (i < json.size()) {
+            if (json[i] == '\\') {
+                if (i + 1 < json.size()) {
+                    value += json[i];
+                    value += json[i + 1];
+                    i += 2;
+                } else {
+                    // malformed
+                    break;
+                }
+            } else if (json[i] == '"') {
+                return value;
+            } else {
+                value += json[i++];
+            }
+        }
+        // no closing quote
+        return std::nullopt;
+    }
+
 
     size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* output) {
         size_t totalSize = size * nmemb;
@@ -165,8 +207,21 @@ void ExecuteRequest(std::string_view command, std::ifstream& file) {
         // make api call
         MakeApiCall(&api_info);
 
-        // print api call
-        std::cout << api_info.api_response << "\n";
+        // parse code and message; print
+        auto response_code = utils::GetJsonStringValue(api_info.api_response, "code");
+        auto response_message = utils::GetJsonStringValue(api_info.api_response, "message");
+        if (!response_code) {
+            std::cerr << "Could not find status code in API response.\n";
+            exit(-1);
+        } else if (!response_message) {
+            std::cerr << "Could not find generated message in API response.\n";
+            exit(-1);
+        } else if (std::stoi(*response_code) != 200) {
+            std::cerr << "API response code " << *response_code << ": " << *response_message << ".\n";
+            exit(-1);
+        } else { // valid
+            std::cout << *response_message << '\n';
+        }
     }
 }
 

@@ -43,11 +43,11 @@ note: always run bjork-listen or else bjork will explain a previously captured e
 * [ ] Add "bjork --explanation-complexity [1-10]" functionality to bjork.cpp. should override current set explanation complexity.
 * [ ] Refactor bjork-install.sh and make it more professional and simple. ie, do we really need ALL of Libcurl? Super ideally, should be able to install and setup with "sudo apt install bjork".
 * [ ] Decide on what we want to do with "last_error" file after after bjork.cpp is ran. Some ideas: (1) automatically clear it unless some flag "such as --no-clear" is also set. This is so a user always remebers to run "bjork-listen" before "bjork --explain". (2) don't automatically clear? but store last "bjork --explain" error used and make sure that contents of "last_error" isn't the same of that in the last stored error used?
-* [] More error checks in bjork.cpp. Don't proceed if last_error is empty or doesn't contain a valid error. Brainstorm more for edge cases. 
-* [] Design decisions regarding LLM to use. ie, should user put in their own API key in installation? should we allow them to use our API key? if so, how do we securly store that? Is there a good AI API to use that doesn't use API keys?
-* [] Start on AI system prompt.
-* [] Loading UI in terminal for while we are waiting for the API to return. probably should use some sort of threading here to be professional.
-* [] Make more secure to protect against prompt injections.
+* [ ] More error checks in bjork.cpp. Don't proceed if last_error is empty or doesn't contain a valid error. Brainstorm more for edge cases. 
+* [ ] Design decisions regarding LLM to use. ie, should user put in their own API key in installation? should we allow them to use our API key? if so, how do we securly store that? Is there a good AI API to use that doesn't use API keys?
+* [ ] Start on AI system prompt.
+* [ ] Loading UI in terminal for while we are waiting for the API to return. probably should use some sort of threading here to be professional.
+* [ ] Make more secure to protect against prompt injections.
 
 ### Ideas
 
