@@ -1,3 +1,4 @@
 #!/bin/bash
 mkdir -p "$HOME/.bjork"
 "$@" 2> "$HOME/.bjork/last_error"
+cat "$HOME/.bjork/last_error"

@@ -52,6 +52,40 @@ namespace utils {
         return oss.str();
     }
 
+    std::string UnescapeJson(std::string_view input) {
+        std::ostringstream out;
+        for (size_t i = 0; i < input.size(); ++i) {
+            if (input[i] == '\\' && i + 1 < input.size()) {
+                char next = input[i + 1];
+                switch (next) {
+                    case 'n': out << '\n'; i++; break;
+                    case 't': out << '\t'; i++; break;
+                    case 'r': out << '\r'; i++; break;
+                    case 'b': out << '\b'; i++; break;
+                    case 'f': out << '\f'; i++; break;
+                    case '\\': out << '\\'; i++; break;
+                    case '\"': out << '\"'; i++; break;
+                    case 'u': {
+                        if (i + 5 < input.size()) {
+                            std::string code = std::string(input.substr(i + 2, 4));
+                            char16_t unicode = static_cast<char16_t>(std::stoi(code, nullptr, 16));
+                            if (unicode == 0x003c) out << '<';
+                            else if (unicode == 0x003e) out << '>';
+                            else out << '?';
+                            i += 5;
+                        }
+                        break;
+                    }
+                    default: out << next; i++; break;
+                }
+            } else {
+                out << input[i];
+            }
+        }
+        return out.str();
+    }
+
+
     std::optional<std::string> GetJsonStringValue(std::string_view json, std::string_view key) {
         std::string indentifier = "\"" + std::string(key) + "\"";
 
@@ -214,7 +248,7 @@ void ExecuteRequest(std::string_view command, std::ifstream& file) {
             std::cerr << "Full API response:\n" << api_info.api_response << '\n';
             exit(-1);
         } else {
-            std::cout << *explanation << '\n';
+            std::cout << utils::UnescapeJson(*explanation) << '\n';
         }
     }
 }
