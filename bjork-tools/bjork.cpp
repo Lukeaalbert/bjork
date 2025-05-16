@@ -185,11 +185,11 @@ int MakeApiCall(utils::ApiInfo* api_info) {
 }
 
 void ExecuteRequest(std::string_view command, std::ifstream& file) {
-    if (command == "show") {
+    if (command == "--show") {
         // print error
         std::cout << file.rdbuf();
         std::cout.flush();
-    } else if (command == "explain") {
+    } else if (command == "--explain") {
         // this displays loading animation
         loading_done = false;
         std::thread spinner(LoadingSpinner);
@@ -219,8 +219,9 @@ void ExecuteRequest(std::string_view command, std::ifstream& file) {
         const char* kSystemPrompt = R"(
         You are a programming tutor assistant. You will be shown an error message.
 
-        Your job is to generate a **brief, clear, and helpful explanation** of the error.
-        Your response MUST contain **exactly three labeled sections**, using this format (DO NOT DEVIATE):
+        Your job is to generate a brief, clear, and helpful explanation of the error.
+
+        Your response MUST contain exactly four sections, with these exact labels:
 
         The Error: <Short summary of what the error is>
 
@@ -230,15 +231,14 @@ void ExecuteRequest(std::string_view command, std::ifstream& file) {
 
         Why It Happened: <One-sentence explanation of why this error occurs in general>
 
-        RESPONSE REQUIREMENTS:
+        RESPONSE FORMAT REQUIREMENTS:
         - Use *exactly* the labels: "The Error:", "Likely Location:", "How to Fix:", and "Why It Happened:"
-        - NO markdown, NO code fences, NO bullet points
-        - Output must be directly suitable for printing via std::cout
-        - Format with `\n` for newlines and `\t` for indentation — do not describe them, just insert them directly
-        - There must be *exactly* two newlines (ie, '\n\n') after the end of each section ("The Error", "Likely Location", 
-        "How to Fix", and "Why It Happened")
-        - *Do not* include any extra newlines (ie, at the end of the full response, before the response, between any two sections, etc)
-        - Output should not include introductory phrases, summaries, or extra context — just the 4 labeled sections
+        - Do NOT use markdown, code blocks, bullet points, or any extra formatting
+        - The output must be suitable for printing directly via std::cout
+        - Each section must be separated by **exactly two real newline characters** (not escaped `\\n`, not double-escaped)
+        - There must be **no additional newlines** anywhere else — not at the beginning, not at the end, not between label and content
+        - Output only the four labeled sections — no introductory or summary text
+
         )";
 
         std::ostringstream json_body_stream;
@@ -274,16 +274,13 @@ void ExecuteRequest(std::string_view command, std::ifstream& file) {
             exit(-1);
 
         // parse code and message; print
-        std::cout << "response (raw!):\n" << api_info.api_response; // TODO: delete me
         auto explanation = utils::GetJsonStringValue(api_info.api_response, "text");
         if (!explanation) {
             std::cerr << "Error: No explanation text found in response.\n";
             std::cerr << "Full API response:\n" << api_info.api_response << '\n';
             exit(-1);
         } else {
-            /* we gotta unscape this twice because the ai returns some double newlines
-            for better display. and you need two passes through unescape to account for this */ 
-            std::cout << utils::UnescapeJson(utils::UnescapeJson(*explanation)) << '\n';
+            std::cout << utils::UnescapeJson(*explanation) << '\n';
         }
     }
 }
