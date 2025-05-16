@@ -7,6 +7,7 @@
 #include <string_view>
 
 #include "spinner.h"
+#include "system.h"
 #include <curl/curl.h>
 
 namespace utils {
@@ -137,16 +138,15 @@ namespace utils {
 void Usage() {
     const static std::string usage = 
         "usage:\n"
-        "\tbjork-listen (capture new error message)\n"
-        "\n"
+        "\tbjork --listen [compile/run command] (capture new error message)\n"
         "\tbjork --explain (explain captured error message)\n"
         "\tbjork --show (show currently captured error message)\n"
         "\tbjork --explanation-complexity [1-10] (set complexity of explanations)\n"
         "\tbjork --help\n\n"
         "sample usage:\n"
-        "\tbjork-listen g++ badcode.cpp\n"
+        "\tbjork --listen g++ badcode.cpp\n"
         "\tbjork --explain\n\n"
-        "\tbjork-listen python3 badcode.py\n"
+        "\tbjork --listen python3 badcode.py\n"
         "\tbjork --explain\n\n";
     std::cout << usage;
     std::cout.flush();
@@ -189,8 +189,7 @@ void ExecuteRequest(std::string_view command, std::ifstream& file) {
         // print error
         std::cout << file.rdbuf();
         std::cout.flush();
-    }
-    else if (command == "explain") {
+    } else if (command == "explain") {
         // this displays loading animation
         loading_done = false;
         std::thread spinner(LoadingSpinner);
@@ -236,7 +235,9 @@ void ExecuteRequest(std::string_view command, std::ifstream& file) {
         - NO markdown, NO code fences, NO bullet points
         - Output must be directly suitable for printing via std::cout
         - Format with `\n` for newlines and `\t` for indentation — do not describe them, just insert them directly
-        - There must be *exactly* two newlines `\n` directly inserted after the end of each section ("The Error", "Likely Location", "How to Fix", and "Why It Happened")
+        - There must be *exactly* two newlines (ie, '\n\n') after the end of each section ("The Error", "Likely Location", 
+        "How to Fix", and "Why It Happened")
+        - *Do not* include any extra newlines (ie, at the end of the full response, before the response, between any two sections, etc)
         - Output should not include introductory phrases, summaries, or extra context — just the 4 labeled sections
         )";
 
@@ -273,6 +274,7 @@ void ExecuteRequest(std::string_view command, std::ifstream& file) {
             exit(-1);
 
         // parse code and message; print
+        std::cout << "response (raw!):\n" << api_info.api_response; // TODO: delete me
         auto explanation = utils::GetJsonStringValue(api_info.api_response, "text");
         if (!explanation) {
             std::cerr << "Error: No explanation text found in response.\n";
@@ -287,7 +289,6 @@ void ExecuteRequest(std::string_view command, std::ifstream& file) {
 }
 
 int main(int argc, char *argv[]) {
-
     // invalid (no flags set)
     if (argc < 2) {
         Usage();
@@ -300,15 +301,22 @@ int main(int argc, char *argv[]) {
         Usage();
         return 1;
     }
-    
-    // remove --
-    command.remove_prefix(2);
 
     // if command is --help, there's no need to open the file
-    if (command == "help") {
+    if (command == "--help") {
         Usage();
-    } else if (command == "explanation-complexity") { // no need to open file here either
+    } else if (command == "--explanation-complexity") { // no need to open file here either
         // do stuff
+    } else if (command == "--listen") {
+        std::stringstream arg_stream;
+        for (size_t i = 2; i < argc; ++i) arg_stream << argv[i] << ' ';
+        std::string home = std::getenv("HOME");
+        std::string cmd = home + "/.local/share/bjork/bjork-listen " + arg_stream.str();
+        bool res = RunSystemCommand(cmd.c_str());
+        if (!res) {
+            std::cerr << "Bjork-listen could not be run for " << arg_stream.str() << '\n';
+            exit(-1);
+        }
     } else { // need to open file to execute user command
         // get path to last_error log (from bjork-listen)
         const char* path = std::getenv("HOME");

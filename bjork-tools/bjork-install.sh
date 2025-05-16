@@ -4,9 +4,11 @@ set -e
 # config
 REPO_BASE="https://raw.githubusercontent.com/Lukeaalbert/bjork/main/bjork-tools"
 INSTALL_DIR="$HOME/.local/bin"
+INTERNAL_DIR="$HOME/.local/share/bjork"
 
 echo "Installing Bjork CLI to: $INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
+mkdir -p "$INTERNAL_DIR"
 TMP_DIR=$(mktemp -d)
 
 # download files
@@ -14,12 +16,14 @@ echo "Downloading source files..."
 curl -fsSL "$REPO_BASE/bjork.cpp" -o "$TMP_DIR/bjork.cpp"
 curl -fsSL "$REPO_BASE/spinner.cpp" -o "$TMP_DIR/spinner.cpp"
 curl -fsSL "$REPO_BASE/spinner.h" -o "$TMP_DIR/spinner.h"
+curl -fsSL "$REPO_BASE/system.cpp" -o "$TMP_DIR/system.cpp"
+curl -fsSL "$REPO_BASE/system.h" -o "$TMP_DIR/system.h"
 curl -fsSL "$REPO_BASE/CMakeLists.txt" -o "$TMP_DIR/CMakeLists.txt"
 curl -fsSL "$REPO_BASE/bjork-listen" -o "$TMP_DIR/bjork-listen"
 
-# setup bjork-listen
+# setup bjork-listen (internal-only)
 chmod +x "$TMP_DIR/bjork-listen"
-mv "$TMP_DIR/bjork-listen" "$INSTALL_DIR/"
+mv "$TMP_DIR/bjork-listen" "$INTERNAL_DIR/"
 
 # build bjork binary
 echo "Building bjork binary with CMake..."
@@ -62,13 +66,13 @@ else
 fi
 
 # verify
-if command -v bjork > /dev/null && command -v bjork-listen > /dev/null; then
+if command -v bjork > /dev/null; then
   echo "Bjork installed successfully!"
   echo "Try running:"
-  echo "   bjork-listen g++ badcode.cpp"
+  echo "   bjork --listen g++ badcode.cpp"
   echo "   bjork --explain"
 else
-  echo "Installation complete, but 'bjork' or 'bjork-listen' not found in PATH yet."
+  echo "Installation complete, but 'bjork' not found in PATH yet."
   echo "   You may need to restart your terminal or run:"
   echo "   source ~/.bashrc   or   source ~/.zshrc"
 fi

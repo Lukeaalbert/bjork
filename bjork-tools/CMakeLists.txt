@@ -13,5 +13,5 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(curl)
 
-add_executable(bjork bjork.cpp spinner.cpp)
+add_executable(bjork bjork.cpp spinner.cpp system.cpp)
 target_link_libraries(bjork PRIVATE CURL::libcurl)
