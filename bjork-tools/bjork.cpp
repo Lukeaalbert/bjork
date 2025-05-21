@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <format>
 #include <optional>
+#include <charconv>
 #include <string_view>
 
 #include "spinner.h"
@@ -140,14 +141,14 @@ void Usage() {
         "usage:\n"
         "\tbjork --listen [compile/run command] (capture new error message)\n"
         "\tbjork --explain (explain captured error message)\n"
-        "\tbjork --show (show currently captured error message)\n"
+        "\tbjork --show (show currently captured error message and explanation complexity)\n"
         "\tbjork --explanation-complexity [1-10] (set complexity of explanations)\n"
         "\tbjork --help\n\n"
         "sample usage:\n"
         "\tbjork --listen g++ badcode.cpp\n"
         "\tbjork --explain\n\n"
         "\tbjork --listen python3 badcode.py\n"
-        "\tbjork --explain\n\n";
+        "\tbjork --explain\n";
     std::cout << usage;
     std::cout.flush();
 }
@@ -182,106 +183,199 @@ int MakeApiCall(utils::ApiInfo* api_info) {
         curl_easy_cleanup(curl);
         return 1;
     }
+    std::cerr << "Failed to query API for explanation!\n";
+    return 0;
 }
 
-void ExecuteRequest(std::string_view command, std::ifstream& file) {
-    if (command == "--show") {
-        // print error
-        std::cout << file.rdbuf();
-        std::cout.flush();
-    } else if (command == "--explain") {
-        // this displays loading animation
-        loading_done = false;
-        std::thread spinner(LoadingSpinner);
-
-        // read file to string
-        std::stringstream buff;
-        buff << file.rdbuf();
-        const std::string kLoggedError =  buff.str();
-
-        // make api call
-        // TODO: big todo here! this is temporary. once we release,
-        // don't just store this as a local env. will figure out more about
-        // this later.
-        const char* kGeminiApiKey = std::getenv("GEMINI_API_KEY");
-        if (kGeminiApiKey == nullptr) {
-            std::cerr << "Error: GEMINI_API_KEY environment variable not set." << std::endl;
-            loading_done = true;
-            spinner.join(); // always
+void ExecuteRequest(std::string_view command, const std::vector<std::string_view>& args) {
+    if (command == "--help") { // no need to open files
+        Usage();
+    } else if (command == "--explanation-complexity") { // only need to open explanation-complexity file
+        if (args.size() == 1) {
+            // no int provided
+            std::cerr << "Error: To set explanation complexity, please provide an int from 1-10 for complexity level.\n";
+            exit(-1);
+        }
+        // get complexity from args
+        int complexity = -1;
+        auto [ptr, ec] = std::from_chars(args[1].data(), args[1].data() + args[1].size(), complexity);
+        if (ec != std::errc() || complexity < 1 || complexity > 10) {
+            // not an int
+            std::cerr << "Error: To set explanation complexity, please provide an int from 1-10 for complexity level.\n";
             exit(-1);
         }
 
-        std::ostringstream url_stream;
-        url_stream << "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" << kGeminiApiKey;
-        const std::string kApiUri = url_stream.str();
+        // open file to write complexity to. clear prev content.
+        std::string file_path = std::getenv("HOME") + std::string("/.bjork/bjork-explanation-complexity");
+        std::ofstream explanation_complexity_file;
+        explanation_complexity_file.open(file_path, std::ofstream::out | std::ofstream::trunc);
 
-        // TODO: improve as much as possible
-        const char* kSystemPrompt = R"(
-        You are a programming tutor assistant. You will be shown an error message.
+        // write complexity to file
+        if (explanation_complexity_file.is_open()) {
+            explanation_complexity_file << std::to_string(complexity);
+            explanation_complexity_file.close();
+            printf("Explanation complexity set to %d.\n", complexity);
+        } else {
+            std::cerr << "Could not open explanation complexity file at " << file_path << '\n';
+            exit(-1);
+        }
+    } else if (command == "--listen") { // only need to write to last_error
+        std::stringstream arg_stream;
+        for (size_t i = 1; i < args.size(); ++i) arg_stream << args[i] << ' ';
+        std::string home = std::getenv("HOME");
+        std::string cmd = home + "/.local/share/bjork/bjork-listen " + arg_stream.str();
+        bool res = RunSystemCommand(cmd.c_str());
+        if (!res) {
+            std::cerr << "Bjork --listen could not be run for " << arg_stream.str() << '\n';
+            exit(-1);
+        } else std::cout << '\n'; // for better formatting
+    } else { // need to open both files
+        // first check for invalid command
+        if (command != "--show" && command != "--explain") {
+            Usage(); // invalid command
+            return;
+        }
+        // get path to files
+        const char* path = std::getenv("HOME");
 
-        Your job is to generate a brief, clear, and helpful explanation of the error.
+        // setup went wrong: invalid HOME env variable
+        if (!path) {
+            std::cerr << "Could not find HOME environment variable.\n";
+            exit(-1);
+        }
 
-        Your response MUST contain exactly four sections, with these exact labels:
+        // open last_error log
+        std::ifstream log_file(std::string(path) + "/.bjork/last_error");
+        if (!log_file) {
+            std::cerr << "No error captured. Capture error message with 'bjork-listen' first.\n";
+            exit(-1);
+        }
+        // open bjork-explanation-complexity log
+        std::ifstream complexity_file(std::string(path) + "/.bjork/bjork-explanation-complexity");
+        int complexity;
+        if (!complexity_file) {
+            std::cerr << "No explanation complexity found. Set with 'set-explanation-complexity' first.\n";
+            exit(-1);
+        }
 
-        The Error: <Short summary of what the error is>
+        // start case for all commands that need to use files
+        if (command == "--show") {
+            // print error
+            std::cout << log_file.rdbuf();
+            // print explanation complexity
+            std::cout << "\n*** Explanation Complexity:" << complexity_file.rdbuf() << " ***\n\n";
+            std::cout.flush();
+            // close files
+            log_file.close();
+            complexity_file.close();
+        } else if (command == "--explain") {
+            // this displays loading animation
+            loading_done = false;
+            std::thread spinner(LoadingSpinner);
 
-        Likely Location: <Where in the user's code the problem likely is (e.g. line number, header, or code context)>
+            // read error log to string
+            std::stringstream buff;
+            buff << log_file.rdbuf();
+            const std::string kLoggedError =  buff.str();
 
-        How to Fix: <How the user can fix or approach fixing the error>
+            // read explanation complexity to string
+            std::stringstream buff_;
+            buff_ << complexity_file.rdbuf();
+            const std::string kExplanationComplexity =  buff_.str();
 
-        Why It Happened: <One-sentence explanation of why this error occurs in general>
+            // make api call
+            // TODO: big todo here! this is temporary. once we release,
+            // don't just store this as a local env. will figure out more about
+            // this later.
+            const char* kGeminiApiKey = std::getenv("GEMINI_API_KEY");
+            if (kGeminiApiKey == nullptr) {
+                std::cerr << "Error: GEMINI_API_KEY environment variable not set." << std::endl;
+                loading_done = true;
+                spinner.join(); // always
+                log_file.close();
+                complexity_file.close();
+                exit(-1);
+            }
 
-        RESPONSE FORMAT REQUIREMENTS:
-        - Use *exactly* the labels: "The Error:", "Likely Location:", "How to Fix:", and "Why It Happened:"
-        - Do NOT use markdown, code blocks, bullet points, or any extra formatting
-        - The output must be suitable for printing directly via std::cout
-        - Each section must be separated by **exactly two real newline characters** (not escaped `\\n`, not double-escaped)
-        - There must be **no additional newlines** anywhere else — not at the beginning, not at the end, not between label and content
-        - Output only the four labeled sections — no introductory or summary text
+            std::ostringstream url_stream;
+            url_stream << "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" << kGeminiApiKey;
+            const std::string kApiUri = url_stream.str();
 
-        )";
+            // TODO: improve as much as possible
+            const char* kSystemPrompt = R"(
+            You are a programming tutor assistant. You will be shown an error message.
 
-        std::ostringstream json_body_stream;
-        json_body_stream << R"({
-            "contents": [
-                {
-                    "role": "user",
+            Your job is to generate a brief, clear, and helpful explanation of the error.
+
+            Your response MUST contain exactly four sections, with these exact labels:
+
+            The Error: <Short summary of what the error is>
+
+            Likely Location: <Where in the user's code the problem likely is (e.g. line number, header, or code context)>
+
+            How to Fix: <How the user can fix or approach fixing the error>
+
+            Why It Happened: <One-sentence explanation of why this error occurs in general>
+
+            RESPONSE FORMAT REQUIREMENTS:
+            - Use *exactly* the labels: "The Error:", "Likely Location:", "How to Fix:", and "Why It Happened:"
+            - Do NOT use markdown, code blocks, bullet points, or any extra formatting
+            - The output must be suitable for printing directly via std::cout
+            - Each section must be separated by **exactly two real newline characters** (not escaped `\\n`, not double-escaped)
+            - There must be **no additional newlines** anywhere else — not at the beginning, not at the end, not between label and content
+            - Output only the four labeled sections — no introductory or summary text
+
+            )";
+
+            std::ostringstream json_body_stream;
+            json_body_stream << R"({
+                "contents": [
+                    {
+                        "role": "user",
+                        "parts": [
+                            { "text": ")" << utils::EscapeJson(kLoggedError) << R"(" }
+                        ]
+                    }
+                ],
+                "system_instruction": {
+                    "role": "system",
                     "parts": [
-                        { "text": ")" << utils::EscapeJson(kLoggedError) << R"(" }
+                        { "text": ")" << utils::EscapeJson(kSystemPrompt) << R"(" }
                     ]
                 }
-            ],
-            "system_instruction": {
-                "role": "system",
-                "parts": [
-                    { "text": ")" << utils::EscapeJson(kSystemPrompt) << R"(" }
-                ]
+            })";
+            const std::string kJsonBody = json_body_stream.str();
+
+            // make api info struct
+            utils::ApiInfo api_info(kApiUri, kLoggedError, kSystemPrompt, kJsonBody);
+
+            // make api call
+            int res_status = MakeApiCall(&api_info);
+
+            // api call done!
+            loading_done = true;
+            spinner.join();
+
+            if (!res_status) {
+                log_file.close();
+                complexity_file.close();
+                exit(-1);
             }
-        })";
-        const std::string kJsonBody = json_body_stream.str();
 
-        // make api info struct
-        utils::ApiInfo api_info(kApiUri, kLoggedError, kSystemPrompt, kJsonBody);
-
-        // make api call
-        int res_status = MakeApiCall(&api_info);
-
-        // api call done!
-        loading_done = true;
-        spinner.join();
-
-        if (!res_status)
-            exit(-1);
-
-        // parse code and message; print
-        auto explanation = utils::GetJsonStringValue(api_info.api_response, "text");
-        if (!explanation) {
-            std::cerr << "Error: No explanation text found in response.\n";
-            std::cerr << "Full API response:\n" << api_info.api_response << '\n';
-            exit(-1);
-        } else {
-            std::cout << utils::UnescapeJson(*explanation) << '\n';
+            // parse code and message; print
+            auto explanation = utils::GetJsonStringValue(api_info.api_response, "text");
+            if (!explanation) {
+                std::cerr << "Error: No explanation text found in response.\n";
+                std::cerr << "Full API response:\n" << api_info.api_response << '\n';
+                log_file.close();
+                complexity_file.close();
+                exit(-1);
+            } else {
+                std::cout << utils::UnescapeJson(*explanation) << '\n';
+            }
         }
+        log_file.close();
+        complexity_file.close();
     }
 }
 
@@ -292,50 +386,20 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    std::string_view command(argv[1]);
+    // holds all args
+    std::vector<std::string_view> args;
+    for (size_t i = 1; i < argc; ++i) {
+        args.emplace_back(argv[i]);
+    }
+
+    std::string_view command = (argv[1]);
     // invalid (bad flag syntax)
     if (command.size() <= 2 || command[0] != '-' || command[1] != '-') {
         Usage();
         return 1;
     }
 
-    // if command is --help, there's no need to open the file
-    if (command == "--help") {
-        Usage();
-    } else if (command == "--explanation-complexity") { // no need to open file here either
-        // do stuff
-    } else if (command == "--listen") {
-        std::stringstream arg_stream;
-        for (size_t i = 2; i < argc; ++i) arg_stream << argv[i] << ' ';
-        std::string home = std::getenv("HOME");
-        std::string cmd = home + "/.local/share/bjork/bjork-listen " + arg_stream.str();
-        bool res = RunSystemCommand(cmd.c_str());
-        if (!res) {
-            std::cerr << "Bjork-listen could not be run for " << arg_stream.str() << '\n';
-            exit(-1);
-        }
-    } else { // need to open file to execute user command
-        // get path to last_error log (from bjork-listen)
-        const char* path = std::getenv("HOME");
-
-        // setup when wrong: invalid HOME env variable
-        if (!path) {
-            std::cerr << "Could not find HOME environment variable.\n";
-            return 1;
-        }
-
-        // open last_error log
-        std::ifstream file(std::string(path) + "/.bjork/last_error");
-        // invalid (last_error log is empty)
-        if (!file) {
-            std::cerr << "No error captured. Capture error message with 'bjork-listen' first.\n";
-            return 1;
-        }
-
-        ExecuteRequest(command, file);
-
-        file.close();
-    }
+    ExecuteRequest(command, args);
 
     return 0;
 }

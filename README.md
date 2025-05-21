@@ -38,7 +38,6 @@ note: always run bjork-listen or else bjork will explain a previously captured e
 ### TODO
 (mark with "ip" for in progress or "x" for complete and email. ie,
 "[ip, lukeaalbert@gmail.com] Do thing")
-* [x, lukeaalbert@gmail.com] Parse just the text (ai response) to print from JSON API response.
 * [ ] Fix or suppress warning messages that occur when installing with bjork-install.sh!!! very important.
 * [ ] Add "explanation complexity" prompt in bjork-install.sh and store set complexity on a file locally to use
 * [ ] Add "bjork --explanation-complexity [1-10]" functionality to bjork.cpp. should override current set explanation complexity.

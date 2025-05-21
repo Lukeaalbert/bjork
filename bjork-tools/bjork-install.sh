@@ -25,6 +25,12 @@ curl -fsSL "$REPO_BASE/bjork-listen" -o "$TMP_DIR/bjork-listen"
 chmod +x "$TMP_DIR/bjork-listen"
 mv "$TMP_DIR/bjork-listen" "$INTERNAL_DIR/"
 
+# setup bjork-explanation-complexity (internal-only)
+touch "$TMP_DIR/bjork-explanation-complexity"
+echo "5" > "$TMP_DIR/bjork-explanation-complexity" # default complexity of 5
+chmod +x "$TMP_DIR/bjork-explanation-complexity"
+mv "$TMP_DIR/bjork-listen" "$INTERNAL_DIR/"
+
 # build bjork binary
 echo "Building bjork binary with CMake..."
 mkdir "$TMP_DIR/build"
